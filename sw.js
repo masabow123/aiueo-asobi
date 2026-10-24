@@ -1,13 +1,17 @@
 // オフラインでも うごくように ファイルを とっておく
-const CACHE = 'aiueo-v1';
+const CACHE = 'aiueo-v2';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/strokes.js', 'js/kana.js', 'js/speech.js', 'js/write.js', 'js/app.js',
-  'icons/icon-192.png', 'icons/icon-512.png',
+  'icons/icon-192.png', 'icons/icon-512.png', 'voice/index.js',
 ];
+// ずんだもんの こえも さいしょに ぜんぶ とっておく
+self.window = self;
+importScripts('voice/index.js');
+const VOICE_FILES = Object.values(self.VOICE || {}).map(f => 'voice/' + f);
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll([...FILES, ...VOICE_FILES])).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()

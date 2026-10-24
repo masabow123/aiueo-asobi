@@ -43,13 +43,14 @@
     );
     celebrateEl.hidden = false;
     fanfare();
+    setTimeout(() => say(text), 700);
     return new Promise(r => setTimeout(() => { celebrateEl.hidden = true; r(); }, ms));
   }
 
   // ---------- がめん の きりかえ（Android の もどる ボタン に たいおう） ----------
   const screens = {};
   function go(name, arg, push = true) {
-    window.speechSynthesis?.cancel();
+    window.SPEECH.stop();
     if (push) history.pushState({ name, arg }, '');
     app.replaceChildren(screens[name](arg));
     app.dataset.screen = name;
@@ -133,7 +134,8 @@
         card('🗣️', 'おして きこう', conv('もじばん'), '#6bcb77', () => go('board')),
         card('✏️', 'かいて みよう', `★ ${mine} / ${total}`, '#ff8c42', () => go('pick')),
         card('🍎', 'かず あそび', 'たしざん・ひきざん', '#e0a800', () => go('mathMenu'))),
-      warn);
+      warn,
+      h('p', { class: 'credit' }, 'こえ: VOICEVOX:ずんだもん'));
   };
 
   // ---------- おして きこう（うった もじを よみあげ） ----------
@@ -302,7 +304,6 @@
   };
 
   // ---------- かず あそび（たしざん・ひきざん） ----------
-  const YOMI = ['ぜろ', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう', 'じゅう'];
   const THINGS = ['🍎', '🍓', '🐟', '⭐', '🚗', '🍬', '🐤', '🌷', '🍩', '🐞'];
 
   screens.mathMenu = () => {
@@ -329,8 +330,7 @@
     const stars = h('div');
     const eq = h('div', { class: 'math-eq' });
     const pad = h('div', { class: 'num-pad' });
-    const sign = op === '+' ? 'たす' : 'ひく';
-    const speak = () => say(`${YOMI[a]} ${sign} ${YOMI[b]} は？`, { rate: 0.75 });
+    const speak = () => say(K.mathSay(a, op, b), { rate: 0.75 });
 
     // 5こずつ ならべた かたまり。gone の ぶんは ひきざんで へる もの。
     function group(n, thing, gone = 0) {
@@ -343,7 +343,7 @@
               if (cell.classList.contains('gone') || cell.dataset.n) return;
               counted++;
               cell.dataset.n = counted;
-              say(YOMI[counted], { rate: 0.9 });
+              say(K.YOMI[counted], { rate: 0.9 });
             },
           }, thing);
           return cell;
@@ -389,7 +389,7 @@
               score++;
               stars.replaceChildren(starRow(score));
               await new Promise(r => setTimeout(r, 400));
-              say(`${YOMI[a]} ${sign} ${YOMI[b]} は ${YOMI[answer]}`, { rate: 0.8 });
+              say(K.mathSay(a, op, b, answer), { rate: 0.8 });
               await new Promise(r => setTimeout(r, 2200));
               if (score >= 10) { await celebrate('かずの めいじん！', 2200); score = 0; }
               next();

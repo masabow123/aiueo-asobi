@@ -1,0 +1,12 @@
+{
+  "name": "aiueo-asobi",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "strokes": "node tools/build-strokes.mjs",
+    "voice": "node tools/build-voice.mjs"
+  },
+  "devDependencies": {
+    "@breezystack/lamejs": "1.2.7"
+  }
+}

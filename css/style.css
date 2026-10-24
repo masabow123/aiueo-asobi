@@ -68,6 +68,7 @@ button {
 .menu-label { font-size: clamp(18px, 3.6vmin, 32px); }
 .menu-sub { font-size: clamp(13px, 2.4vmin, 22px); opacity: .65; }
 .screen-quizmenu .menu { flex: 1; align-content: center; }
+.credit { position: fixed; right: 2vmin; bottom: 1vmin; margin: 0; font-size: 12px; opacity: .45; }
 .warn { max-width: 80vw; background: #fff1f1; border: 2px solid var(--bad); border-radius: 2vmin; padding: 1.5vmin 3vmin; font-size: clamp(13px, 2.4vmin, 20px); }
 
 /* ---------- もじばん ---------- */

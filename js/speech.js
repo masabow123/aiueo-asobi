@@ -14,9 +14,50 @@
     synth.addEventListener?.('voiceschanged', pickVoice);
   }
 
-  function say(text, { rate = 0.8, onend } = {}) {
-    if (!synth || !text) { onend?.(); return; }
-    synth.cancel();
+  // ずんだもんの こえ（voice/index.js）。よみの キーは ひらがなで くうはく なし。
+  const VOICE = window.VOICE || {};
+  const voiceKey = s => window.KANA.toHira(s).replace(/\s/g, '');
+  const audio = new Audio();
+  let queue = [];
+  let queueEnd = null;
+
+  function playNext() {
+    const file = queue.shift();
+    if (!file) { const f = queueEnd; queueEnd = null; f?.(); return; }
+    audio.src = 'voice/' + file;
+    audio.play().catch(() => playNext());
+  }
+  audio.addEventListener('ended', playNext);
+  audio.addEventListener('error', playNext);
+
+  function stop() {
+    queue = [];
+    queueEnd = null;
+    audio.pause();
+    synth?.cancel();
+  }
+
+  function say(text, opts = {}) {
+    if (!text) { opts.onend?.(); return; }
+    stop();
+    const key = voiceKey(text);
+    // まるごとの こえが あれば それ、なければ 1もじずつ つなげる
+    const chars = [...key].filter(c => c !== 'ー');
+    const charFile = c => VOICE[voiceKey(window.KANA.sayChar(c))];
+    const files = VOICE[key] ? [VOICE[key]]
+      : chars.length && chars.every(charFile) ? chars.map(charFile)
+      : null;
+    if (files) {
+      queue = files;
+      queueEnd = opts.onend || null;
+      playNext();
+      return;
+    }
+    sayTTS(text, opts);
+  }
+
+  function sayTTS(text, { rate = 0.8, onend } = {}) {
+    if (!synth) { onend?.(); return; }
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ja-JP';
     if (voice) u.voice = voice;
@@ -50,7 +91,8 @@
 
   window.SPEECH = {
     say,
-    hasJapanese: () => !!voice,
+    stop,
+    hasJapanese: () => !!voice || Object.keys(VOICE).length > 0,
     ding: () => tone([880, 1320], { dur: 0.18 }),
     fanfare: () => tone([523, 659, 784, 1047], { dur: 0.25, gap: 0.11 }),
     boo: () => tone([220, 180], { type: 'triangle', dur: 0.18, gap: 0.12, vol: 0.12 }),

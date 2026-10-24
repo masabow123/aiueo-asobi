@@ -64,9 +64,17 @@
   };
   const sayChar = c => SAY[toHira(c)] || c;
 
+  // かず あそびの よみかた
+  const YOMI = ['ぜろ', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう', 'じゅう'];
+  const mathSay = (a, op, b, ans) =>
+    `${YOMI[a]} ${op === '+' ? 'たす' : 'ひく'} ${YOMI[b]} は${ans == null ? '？' : ' ' + YOMI[ans]}`;
+
+  // ほめことば（おいわいの がめんで よむ）
+  const PRAISE = ['ぜんぶ できた！', 'すごい！ 5こ できた！', 'じょうずに かけたね！', 'かずの めいじん！'];
+
   window.KANA = {
     BASIC_COLS: BASIC_COLS.map(cols), EXTRA_COLS: EXTRA_COLS.map(cols),
-    BASIC, DAKU, SMALL, toKata, toHira, isEasy, sayChar,
+    BASIC, DAKU, SMALL, toKata, toHira, isEasy, sayChar, YOMI, mathSay, PRAISE,
     words: kata => (kata ? KATA_WORDS : HIRA_WORDS),
   };
 })();

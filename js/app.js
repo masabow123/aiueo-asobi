@@ -131,7 +131,8 @@
       h('div', { class: 'menu' },
         card('👂', 'きいて あてよう', conv('もじ・ことば'), '#4d96ff', () => go('quizMenu')),
         card('🗣️', 'おして きこう', conv('もじばん'), '#6bcb77', () => go('board')),
-        card('✏️', 'かいて みよう', `★ ${mine} / ${total}`, '#ff8c42', () => go('pick'))),
+        card('✏️', 'かいて みよう', `★ ${mine} / ${total}`, '#ff8c42', () => go('pick')),
+        card('🍎', 'かず あそび', 'たしざん・ひきざん', '#e0a800', () => go('mathMenu'))),
       warn);
   };
 
@@ -298,6 +299,120 @@
       topbar('きこえた ことばを うとう', stars),
       h('div', { class: 'word-row' }, pic, boxes, h('button', { class: 'btn-big btn-speak', onclick: speak }, '🔊')),
       board.el);
+  };
+
+  // ---------- かず あそび（たしざん・ひきざん） ----------
+  const YOMI = ['ぜろ', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう', 'じゅう'];
+  const THINGS = ['🍎', '🍓', '🐟', '⭐', '🚗', '🍬', '🐤', '🌷', '🍩', '🐞'];
+
+  screens.mathMenu = () => {
+    const item = (emoji, label, sub, color, arg) =>
+      h('button', { class: 'menu-card', style: `--c:${color}`, onclick: () => go('math', arg) },
+        h('span', { class: 'menu-emoji' }, emoji), h('span', { class: 'menu-label' }, label), h('span', { class: 'menu-sub' }, sub));
+    return h('div', { class: 'screen screen-quizmenu' },
+      topbar('かず あそび'),
+      h('div', { class: 'menu' },
+        item('➕', 'たしざん', '5まで', '#6bcb77', { op: '+', max: 5 }),
+        item('➕', 'たしざん', '10まで', '#4d96ff', { op: '+', max: 10 }),
+        item('➖', 'ひきざん', '5まで', '#ff8c42', { op: '-', max: 5 }),
+        item('➖', 'ひきざん', '10まで', '#ff6b6b', { op: '-', max: 10 })));
+  };
+
+  // え（10マスに ならべた もの）を みて こたえの かずを おす。えを タップすると かぞえて くれる。
+  screens.math = ({ op, max }) => {
+    let score = 0;
+    let a = 0, b = 0, answer = 0;
+    let fails = 0;
+    let locked = false;
+    let last = '';
+    let counted = 0;
+    const stars = h('div');
+    const eq = h('div', { class: 'math-eq' });
+    const pad = h('div', { class: 'num-pad' });
+    const sign = op === '+' ? 'たす' : 'ひく';
+    const speak = () => say(`${YOMI[a]} ${sign} ${YOMI[b]} は？`, { rate: 0.75 });
+
+    // 5こずつ ならべた かたまり。gone の ぶんは ひきざんで へる もの。
+    function group(n, thing, gone = 0) {
+      return h('div', { class: 'math-group' + (n > 5 ? ' ten' : '') },
+        ...Array.from({ length: n > 5 ? 10 : 5 }, (_, i) => {
+          if (i >= n) return h('span', { class: 'math-cell empty' });
+          const cell = h('button', {
+            class: 'math-cell' + (i >= n - gone ? ' gone' : ''),
+            onclick: () => {
+              if (cell.classList.contains('gone') || cell.dataset.n) return;
+              counted++;
+              cell.dataset.n = counted;
+              say(YOMI[counted], { rate: 0.9 });
+            },
+          }, thing);
+          return cell;
+        }));
+    }
+
+    function next() {
+      locked = false;
+      fails = 0;
+      counted = 0;
+      let key;
+      do {
+        if (op === '+') { a = 1 + Math.floor(Math.random() * (max - 1)); b = 1 + Math.floor(Math.random() * (max - a)); answer = a + b; }
+        else { a = 2 + Math.floor(Math.random() * (max - 1)); b = 1 + Math.floor(Math.random() * (a - 1)); answer = a - b; }
+        key = `${a}${op}${b}`;
+      } while (key === last);
+      last = key;
+      const thing = pick(THINGS);
+      const ans = h('div', { class: 'math-ans' }, '?');
+      eq.replaceChildren(
+        h('div', { class: 'math-pics' },
+          ...(op === '+'
+            ? [group(a, thing), h('span', { class: 'math-op' }, '+'), group(b, thing)]
+            : [group(a, thing, b)])),
+        h('div', { class: 'math-line' },
+          h('span', {}, a), h('span', { class: 'math-op' }, op === '+' ? '+' : '−'), h('span', {}, b),
+          h('span', { class: 'math-op' }, '='), ans));
+      // ひきざんは すこし まってから へる ぶんを けす
+      if (op === '-') setTimeout(() => eq.querySelectorAll('.math-cell.gone').forEach(c => c.classList.add('out')), 700);
+
+      pad.replaceChildren(...Array.from({ length: max + 1 }, (_, n) => {
+        const btn = h('button', {
+          class: 'num-key',
+          onclick: async () => {
+            if (locked || btn.disabled) return;
+            if (n === answer) {
+              locked = true;
+              btn.classList.add('right');
+              ans.textContent = n;
+              ans.classList.add('filled');
+              bump(ans, 'popin');
+              ding();
+              score++;
+              stars.replaceChildren(starRow(score));
+              await new Promise(r => setTimeout(r, 400));
+              say(`${YOMI[a]} ${sign} ${YOMI[b]} は ${YOMI[answer]}`, { rate: 0.8 });
+              await new Promise(r => setTimeout(r, 2200));
+              if (score >= 10) { await celebrate('かずの めいじん！', 2200); score = 0; }
+              next();
+            } else {
+              fails++;
+              btn.disabled = true;
+              bump(btn, 'shake');
+              boo();
+              if (fails >= 2) pad.children[answer].classList.add('hint');
+            }
+          },
+        }, n);
+        return btn;
+      }));
+      stars.replaceChildren(starRow(score));
+      setTimeout(speak, 300);
+    }
+    next();
+
+    return h('div', { class: 'screen screen-math' },
+      topbar(op === '+' ? 'たしざん' : 'ひきざん', stars),
+      h('div', { class: 'math-body' }, eq, h('button', { class: 'btn-big btn-speak', onclick: speak }, '🔊')),
+      pad);
   };
 
   // ---------- かいて みよう ----------

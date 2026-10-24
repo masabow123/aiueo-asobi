@@ -177,6 +177,49 @@ button {
 .nav-arrow { width: 8vmin; height: 20vmin; min-width: 44px; border-radius: 2vmin; background: #fff8; font-size: 5vmin; color: #c9a77f; }
 .btn-next { padding: 1.5vmin 3vmin; border-radius: 99px; background: var(--good); color: #fff; font-size: clamp(16px, 3vmin, 28px); box-shadow: 0 .6vmin 0 #2b8d50; animation: popin .4s; }
 
+/* ---------- かず あそび ---------- */
+.math-body { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 3vmin; }
+.math-eq { display: flex; flex-direction: column; align-items: center; gap: 2.5vmin; }
+.math-pics { display: flex; align-items: center; gap: 2vmin; }
+.math-group {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: .6vmin;
+  background: #fff; border-radius: 2.5vmin; padding: 1.2vmin; box-shadow: 0 .6vmin 0 var(--line);
+}
+.math-cell {
+  width: 8.5vmin; height: 8.5vmin; border-radius: 1.6vmin; background: #fff8ec;
+  font-size: 5.6vmin; line-height: 1; padding: 0; position: relative;
+  transition: opacity .6s, transform .6s;
+}
+.math-cell.empty { background: #fbf3e6; }
+.math-cell[data-n]::after {
+  content: attr(data-n); position: absolute; right: -.6vmin; bottom: -.6vmin;
+  width: 3.6vmin; height: 3.6vmin; border-radius: 50%; background: var(--accent); color: #fff;
+  font-size: 2.4vmin; display: flex; align-items: center; justify-content: center;
+}
+.math-cell.out { opacity: .25; transform: translateY(-1vmin) scale(.85); }
+.math-cell.out::before {
+  content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--bad); font-size: 7vmin; font-weight: 800;
+}
+.math-op { color: var(--accent); }
+.math-pics > .math-op { font-size: 9vmin; }
+.math-line { display: flex; align-items: center; gap: 2.5vmin; font-size: clamp(40px, 11vmin, 110px); line-height: 1; }
+.math-ans {
+  width: 1.3em; height: 1.2em; border-radius: 2.5vmin; background: #fff;
+  border: .6vmin solid var(--accent); display: flex; align-items: center; justify-content: center;
+  color: #d0bba0; animation: blink 1.2s infinite;
+}
+.math-ans.filled { color: var(--ink); border-color: var(--good); background: #f0fbf3; animation: none; }
+.num-pad { display: flex; gap: 1.2vmin; justify-content: center; flex-wrap: wrap; }
+.num-key {
+  width: min(11vmin, 8vw); height: 13vmin; min-width: 48px; min-height: 56px; border-radius: 2vmin; background: #fff;
+  font-size: clamp(26px, 7.5vmin, 72px); line-height: 1; box-shadow: 0 .7vmin 0 var(--line);
+}
+.num-key:active { transform: translateY(.5vmin); }
+.num-key:disabled { opacity: .3; }
+.num-key.right { background: #dcf7e4; box-shadow: 0 .7vmin 0 var(--good); }
+.num-key.hint { background: #ffe066; animation: glow 1s infinite; }
+
 /* たて むき（ポートレート） */
 @media (orientation: portrait) {
   .write-body { flex-direction: column; }
@@ -187,6 +230,9 @@ button {
   .tools { grid-template-columns: repeat(4, 1fr); }
   .choices { flex-direction: column; }
   .choice { width: min(26vh, 50vw); font-size: min(18vh, 34vw); }
+  .math-pics { flex-direction: column; }
+  .math-cell { width: 11vmin; height: 11vmin; font-size: 7vmin; }
+  .num-key { width: 14vw; height: 10vh; }
 }
 
 /* ---------- おいわい ---------- */

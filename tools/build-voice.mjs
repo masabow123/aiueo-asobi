@@ -4,9 +4,12 @@
 import { readFile, writeFile, mkdir, access, readdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { Mp3Encoder } from '@breezystack/lamejs';
+import { emphasize } from './voice-tune.mjs';
 
 const ENGINE = 'http://127.0.0.1:50021';
 const SPEAKER = Number(process.argv[2] || 3); // 3 = ずんだもん（ノーマル）
+// 1もじと かずを はっきり させる つよさ（tools/voice-tune.mjs の EMPHASIS）
+const LETTER_EMPHASIS = 2;
 const PARAMS = { speedScale: 0.85, intonationScale: 1.0, prePhonemeLength: 0.05, postPhonemeLength: 0.12, outputSamplingRate: 24000 };
 const root = new URL('../', import.meta.url);
 const out = new URL('voice/', root);
@@ -20,12 +23,12 @@ const voiceKey = s => K.toHira(s).replace(/\s/g, '');
 // よみあげる ことばの いちらん（text: アプリが いう もじ、src: VOICEVOX に わたす もじ）
 // ひらがな 1もじや かずは「は→ワ」「へ→エ」と じょしに よまれるので カタカナで わたす。
 const phrases = new Map();
-const add = (text, src = text) => phrases.set(voiceKey(text), { text, src });
-for (const c of K.BASIC + K.DAKU) add(c, K.toKata(c));
+const add = (text, src = text, level = 0) => phrases.set(voiceKey(text), { text, src, level });
+for (const c of K.BASIC + K.DAKU) add(c, K.toKata(c), LETTER_EMPHASIS);
 for (const c of K.SMALL) add(K.sayChar(c), 'ちいさい ' + K.toKata(String.fromCodePoint(c.codePointAt(0) + 1)));
 add(K.sayChar('ー'));
 for (const kata of [false, true]) for (const [w] of K.words(kata)) add(w);
-K.YOMI.forEach(y => add(y, K.toKata(y)));
+K.YOMI.forEach(y => add(y, K.toKata(y), LETTER_EMPHASIS));
 const Y = n => K.toKata(K.YOMI[n]);
 const math = (a, op, b, ans) => {
   const head = `${Y(a)}${op === '+' ? 'たす' : 'ひく'}${Y(b)}は`;
@@ -42,6 +45,20 @@ async function api(path, init) {
   return res;
 }
 
+// こえの おおきさを そろえる（1もじは ことばより ちいさく なりがち）。
+// こえの しんの RMS を TARGET_RMS に。とびぬけた 0.1% の とがりは むしして 0.95 を うえかぎりに する。
+const TARGET_RMS = 0.2;
+function normalize(pcm) {
+  const abs = Array.from(pcm, v => Math.abs(v) / 32768);
+  const p999 = [...abs].sort((a, b) => a - b)[Math.floor(abs.length * 0.999)];
+  // こえの しんの ぶぶん（とがりの 1わり いじょう）だけで はかる。しずかな よいんで ひくく でないように。
+  const voiced = abs.filter(x => x > p999 * 0.1);
+  if (!voiced.length || !p999) return pcm;
+  const rms = Math.sqrt(voiced.reduce((s, x) => s + x * x, 0) / voiced.length);
+  const gain = Math.min(TARGET_RMS / rms, 0.95 / p999);
+  return pcm.map(v => Math.max(-32768, Math.min(32767, Math.round(v * gain))));
+}
+
 function wavToMp3(buf) {
   // WAV の data チャンクを さがして 16bit PCM を とりだす
   let p = 12;
@@ -51,7 +68,7 @@ function wavToMp3(buf) {
     const size = buf.readUInt32LE(p + 4);
     if (id === 'fmt ') rate = buf.readUInt32LE(p + 12);
     if (id === 'data') {
-      const pcm = new Int16Array(buf.buffer.slice(buf.byteOffset + p + 8, buf.byteOffset + p + 8 + size));
+      const pcm = normalize(new Int16Array(buf.buffer.slice(buf.byteOffset + p + 8, buf.byteOffset + p + 8 + size)));
       const enc = new Mp3Encoder(1, rate, 48);
       const chunks = [];
       for (let i = 0; i < pcm.length; i += 1152) chunks.push(enc.encodeBuffer(pcm.subarray(i, i + 1152)));
@@ -68,13 +85,14 @@ await mkdir(out, { recursive: true });
 const index = {};
 const readings = [];
 let made = 0;
-for (const [key, { src }] of phrases) {
-  const file = createHash('sha1').update(JSON.stringify([key, src, SPEAKER, PARAMS])).digest('hex').slice(0, 10) + '.mp3';
+for (const [key, { src, level }] of phrases) {
+  const file = createHash('sha1').update(JSON.stringify([key, src, SPEAKER, PARAMS, level, TARGET_RMS, 'p999'])).digest('hex').slice(0, 10) + '.mp3';
   index[key] = file;
   const q = await (await api(`/audio_query?speaker=${SPEAKER}&text=${encodeURIComponent(src)}`, { method: 'POST' })).json();
   readings.push(`${key}	${q.kana}`);
   try { await access(new URL(file, out)); continue; } catch { /* まだ ない */ }
   Object.assign(q, PARAMS);
+  emphasize(q, level);
   const wav = Buffer.from(await (await api(`/synthesis?speaker=${SPEAKER}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(q),
   })).arrayBuffer());

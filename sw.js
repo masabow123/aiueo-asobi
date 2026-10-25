@@ -1,5 +1,5 @@
 // オフラインでも うごくように ファイルを とっておく
-const CACHE = 'aiueo-v4';
+const CACHE = 'aiueo-v5';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/strokes.js', 'js/kana.js', 'js/speech.js', 'js/write.js', 'js/app.js',

@@ -56,7 +56,7 @@ button {
 .mode-toggle .on { background: var(--accent); color: #fff; }
 .menu { display: flex; gap: 3vmin; flex-wrap: wrap; justify-content: center; }
 .menu-card {
-  width: clamp(160px, 30vmin, 280px); aspect-ratio: 1;
+  width: clamp(140px, 24vmin, 250px); aspect-ratio: 1;
   border-radius: 4vmin; background: var(--card);
   border: .9vmin solid var(--c);
   box-shadow: 0 1.2vmin 0 color-mix(in srgb, var(--c) 45%, #fff);
@@ -65,7 +65,7 @@ button {
 }
 .menu-card:active { transform: translateY(.8vmin); box-shadow: 0 .4vmin 0 color-mix(in srgb, var(--c) 45%, #fff); }
 .menu-emoji { font-size: clamp(48px, 10vmin, 96px); line-height: 1; font-family: var(--kana); color: var(--c); }
-.menu-label { font-size: clamp(18px, 3.6vmin, 32px); }
+.menu-label { font-size: clamp(16px, 3vmin, 30px); }
 .menu-sub { font-size: clamp(13px, 2.4vmin, 22px); opacity: .65; }
 .screen-quizmenu .menu { flex: 1; align-content: center; }
 .credit { position: fixed; right: 2vmin; bottom: 1vmin; margin: 0; font-size: 12px; opacity: .45; }
@@ -220,6 +220,48 @@ button {
 .num-key:disabled { opacity: .3; }
 .num-key.right { background: #dcf7e4; box-shadow: 0 .7vmin 0 var(--good); }
 .num-key.hint { background: #ffe066; animation: glow 1s infinite; }
+
+/* ---------- ゲーム: ふうせん わり ---------- */
+.game-field {
+  flex: 1; min-height: 0; position: relative; overflow: hidden; border-radius: 3vmin;
+  background: linear-gradient(#bfe6ff, #e8f6ff 70%, #f3fbea);
+}
+.sky { position: absolute; inset: 0; }
+.game-target {
+  position: absolute; left: 50%; top: 2vmin; transform: translateX(-50%); z-index: 2;
+  display: flex; align-items: center; gap: 2vmin; padding: 1vmin 4vmin;
+  background: #fff; border-radius: 99px; box-shadow: 0 .8vmin 0 #9fc9e6;
+}
+.game-target span { font-size: 5vmin; }
+.game-target b { font-family: var(--kana); font-weight: 600; font-size: 11vmin; line-height: 1.1; color: #ff5d8f; }
+.game-target.popin { animation: popin-c .35s; }
+@keyframes popin-c { 0% { transform: translateX(-50%) scale(.4); } 70% { transform: translateX(-50%) scale(1.15); } 100% { transform: translateX(-50%) scale(1); } }
+.balloon {
+  position: absolute; left: var(--x); bottom: 0; width: 15vmin; height: 18vmin; padding: 0;
+  background: none; touch-action: none;
+  animation: rise var(--dur) linear forwards;
+}
+.balloon::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 32% 28%, #fff9 0 12%, transparent 13%), var(--c);
+  border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
+  box-shadow: inset -1vmin -1.5vmin 0 #0002;
+}
+.balloon::after {
+  content: ''; position: absolute; left: 50%; top: 100%; width: 2px; height: 9vmin; background: #8a7a6a88;
+}
+.balloon span {
+  position: relative; display: flex; align-items: center; justify-content: center; height: 100%;
+  font-family: var(--kana); font-weight: 600; font-size: 10vmin; color: #fff; text-shadow: 0 .4vmin 0 #0003;
+  animation: sway 2.4s ease-in-out infinite alternate;
+}
+.balloon span.num { font-family: var(--ui); font-weight: 800; font-size: 9vmin; }
+.balloon.wobble span { animation: shake .4s; }
+.balloon.popped { pointer-events: none; }
+.balloon.popped::before, .balloon.popped::after, .balloon.popped span { animation: burst .35s forwards; }
+@keyframes rise { from { transform: translateY(20vmin); } to { transform: translateY(calc(-100dvh - 10vmin)); } }
+@keyframes sway { from { translate: calc(-1 * var(--sway)) 0; } to { translate: var(--sway) 0; } }
+@keyframes burst { to { transform: scale(1.6); opacity: 0; } }
 
 /* たて むき（ポートレート） */
 @media (orientation: portrait) {

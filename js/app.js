@@ -49,10 +49,16 @@
 
   // ---------- がめん の きりかえ（Android の もどる ボタン に たいおう） ----------
   const screens = {};
+  // がめんを はなれる ときに とめる もの（ゲームの タイマーなど）
+  let cleanup = null;
   function go(name, arg, push = true) {
     window.SPEECH.stop();
+    cleanup?.();
+    cleanup = null;
     if (push) history.pushState({ name, arg }, '');
-    app.replaceChildren(screens[name](arg));
+    const el = screens[name](arg);
+    cleanup = el._cleanup || null;
+    app.replaceChildren(el);
     app.dataset.screen = name;
   }
   window.addEventListener('popstate', e => go(e.state?.name || 'home', e.state?.arg, false));
@@ -133,7 +139,8 @@
         card('👂', 'きいて あてよう', conv('もじ・ことば'), '#4d96ff', () => go('quizMenu')),
         card('🗣️', 'おして きこう', conv('もじばん'), '#6bcb77', () => go('board')),
         card('✏️', 'かいて みよう', `★ ${mine} / ${total}`, '#ff8c42', () => go('pick')),
-        card('🍎', 'かず あそび', 'たしざん・ひきざん', '#e0a800', () => go('mathMenu'))),
+        card('🍎', 'かず あそび', 'たしざん・ひきざん', '#e0a800', () => go('mathMenu')),
+        card('🎈', 'ゲーム', 'ふうせん わり', '#ff5d8f', () => go('gameMenu'))),
       warn,
       h('p', { class: 'credit' }, 'こえ: VOICEVOX:ずんだもん'));
   };
@@ -413,6 +420,108 @@
       topbar(op === '+' ? 'たしざん' : 'ひきざん', stars),
       h('div', { class: 'math-body' }, eq, h('button', { class: 'btn-big btn-speak', onclick: speak }, '🔊')),
       pad);
+  };
+
+  // ---------- ゲーム: ふうせん わり ----------
+  // きこえた もじ（かず）の ふうせんを わる。ちがう ふうせんを さわると その もじを よんで くれる。
+  const BALLOON_COLORS = ['#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#4dabf7', '#9775fa', '#f783ac'];
+
+  screens.gameMenu = () => {
+    const item = (emoji, label, sub, color, arg) =>
+      h('button', { class: 'menu-card', style: `--c:${color}`, onclick: () => go('game', arg) },
+        h('span', { class: 'menu-emoji' }, emoji), h('span', { class: 'menu-label' }, label), h('span', { class: 'menu-sub' }, sub));
+    return h('div', { class: 'screen screen-quizmenu' },
+      topbar('ふうせん わり'),
+      h('div', { class: 'menu' },
+        item(conv('あ'), 'もじ', conv('あいうえお'), '#ff5d8f', 'kana'),
+        item('5', 'かず', '1〜10', '#4dabf7', 'num')));
+  };
+
+  screens.game = mode => {
+    const pool = mode === 'num' ? Array.from({ length: 10 }, (_, i) => String(i + 1)) : [...K.BASIC].map(conv);
+    const sayIt = c => say(mode === 'num' ? K.YOMI[+c] : K.sayChar(c));
+    const GOAL = 10;
+    let score = 0;
+    let target = '';
+    let busy = false;
+    let sinceTarget = 0;
+    // ふうせんが かさならない ように 6れつに わけ、さいきん つかった れつは さける
+    const LANES = 6;
+    let recentLanes = [];
+    const sky = h('div', { class: 'sky' });
+    const stars = h('div');
+    const bubble = h('button', { class: 'game-target', onclick: () => sayIt(target) });
+
+    function newTarget() {
+      let t;
+      do { t = pick(pool); } while (t === target);
+      target = t;
+      sinceTarget = 0;
+      bubble.replaceChildren(h('span', {}, '🔊'), h('b', {}, target));
+      bump(bubble, 'popin');
+      sayIt(target);
+    }
+
+    function spawn() {
+      if (busy || sky.childElementCount >= 7) return;
+      // めあての ふうせんが しばらく でて いなければ かならず だす
+      const onSky = [...sky.children].some(b => b.dataset.v === target && !b.classList.contains('popped'));
+      const isTarget = Math.random() < 0.35 || (!onSky && sinceTarget >= 2);
+      let v = target;
+      if (!isTarget) do { v = pick(pool); } while (v === target);
+      sinceTarget = isTarget ? 0 : sinceTarget + 1;
+
+      const free = Array.from({ length: LANES }, (_, i) => i).filter(i => !recentLanes.includes(i));
+      const lane = pick(free);
+      recentLanes = [...recentLanes, lane].slice(-3);
+      const dur = 9 + Math.random() * 4;
+      const b = h('button', {
+        class: 'balloon',
+        'data-v': v,
+        style: `--x:${2 + lane * 15.5 + Math.random() * 3}%;--c:${pick(BALLOON_COLORS)};--dur:${dur}s;--sway:${(Math.random() - 0.5) * 6}vmin`,
+        onpointerdown: e => { e.preventDefault(); hit(b); },
+      }, h('span', { class: mode === 'num' ? 'num' : '' }, v));
+      b.addEventListener('animationend', e => { if (e.animationName === 'rise') b.remove(); });
+      sky.append(b);
+    }
+
+    async function hit(b) {
+      if (busy || b.classList.contains('popped')) return;
+      if (b.dataset.v === target) {
+        b.classList.add('popped');
+        pop();
+        ding();
+        setTimeout(() => b.remove(), 400);
+        score++;
+        stars.replaceChildren(starRow(score));
+        if (score >= GOAL) {
+          busy = true;
+          sky.querySelectorAll('.balloon').forEach(x => x.classList.add('popped'));
+          await celebrate('ぜんぶ わったね！', 2400);
+          sky.replaceChildren();
+          score = 0;
+          stars.replaceChildren(starRow(score));
+          busy = false;
+        }
+        newTarget();
+      } else {
+        bump(b, 'wobble');
+        boo();
+        // まちがえた ふうせんの もじを よんで、めあてを もういちど
+        say(mode === 'num' ? K.YOMI[+b.dataset.v] : K.sayChar(b.dataset.v), { onend: () => setTimeout(() => sayIt(target), 300) });
+      }
+    }
+
+    newTarget();
+    for (let i = 0; i < 3; i++) setTimeout(spawn, i * 500);
+    const timer = setInterval(spawn, 1300);
+
+    const el = h('div', { class: 'screen screen-game' },
+      topbar('ふうせん わり', stars),
+      h('div', { class: 'game-field' }, sky, bubble));
+    el._cleanup = () => clearInterval(timer);
+    stars.replaceChildren(starRow(score));
+    return el;
   };
 
   // ---------- かいて みよう ----------

@@ -70,7 +70,7 @@
     `${YOMI[a]} ${op === '+' ? 'たす' : 'ひく'} ${YOMI[b]} は${ans == null ? '？' : ' ' + YOMI[ans]}`;
 
   // ほめことば（おいわいの がめんで よむ）
-  const PRAISE = ['ぜんぶ できた！', 'すごい！ 5こ できた！', 'じょうずに かけたね！', 'かずの めいじん！'];
+  const PRAISE = ['ぜんぶ できた！', 'すごい！ 5こ できた！', 'じょうずに かけたね！', 'かずの めいじん！', 'ぜんぶ わったね！'];
 
   window.KANA = {
     BASIC_COLS: BASIC_COLS.map(cols), EXTRA_COLS: EXTRA_COLS.map(cols),

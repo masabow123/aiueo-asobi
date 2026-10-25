@@ -21,16 +21,25 @@
   let queue = [];
   let queueEnd = null;
 
+  let gen = 0;
   function playNext() {
     const file = queue.shift();
     if (!file) { const f = queueEnd; queueEnd = null; f?.(); return; }
+    const mine = ++gen;
     audio.src = 'voice/' + file;
-    audio.play().catch(() => playNext());
+    // つぎの こえに きりかわって とまった（AbortError）ときは なにも しない。
+    // よみこめない ファイルは 'error' イベントで つぎへ すすむ。
+    audio.play().catch(e => {
+      if (mine !== gen || e.name === 'AbortError') return;
+      queue = [];
+      playNext();
+    });
   }
   audio.addEventListener('ended', playNext);
   audio.addEventListener('error', playNext);
 
   function stop() {
+    gen++;
     queue = [];
     queueEnd = null;
     audio.pause();

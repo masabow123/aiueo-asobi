@@ -7,7 +7,7 @@ import { Mp3Encoder } from '@breezystack/lamejs';
 
 const ENGINE = 'http://127.0.0.1:50021';
 const SPEAKER = Number(process.argv[2] || 3); // 3 = ずんだもん（ノーマル）
-const PARAMS = { speedScale: 0.9, intonationScale: 1.15, prePhonemeLength: 0.05, postPhonemeLength: 0.12, outputSamplingRate: 24000 };
+const PARAMS = { speedScale: 0.85, intonationScale: 1.0, prePhonemeLength: 0.05, postPhonemeLength: 0.12, outputSamplingRate: 24000 };
 const root = new URL('../', import.meta.url);
 const out = new URL('voice/', root);
 

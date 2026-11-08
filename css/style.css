@@ -85,14 +85,16 @@ button {
 .board-grid {
   flex: 1; min-height: 0;
   display: grid;
-  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   grid-template-rows: repeat(5, 1fr);
   gap: .9vmin;
 }
 .key {
   font-family: var(--kana);
-  font-size: clamp(22px, 6.4vmin, 64px);
+  font-size: clamp(16px, min(6.4vmin, 6.4vw), 64px);
   line-height: 1;
+  padding: 0;
+  min-width: 0;
   background: var(--key);
   border-radius: 1.8vmin;
   box-shadow: 0 .6vmin 0 var(--line);

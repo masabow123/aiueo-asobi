@@ -53,8 +53,9 @@
     // まるごとの こえが あれば それ、なければ 1もじずつ つなげる
     const chars = [...key].filter(c => c !== 'ー');
     const charFile = c => VOICE[voiceKey(window.KANA.sayChar(c))];
+    // spell: false の ときは 1もじずつ よまない（「じゅういち」を「じ・ちいさい ゆ・う…」と よまないように）
     const files = VOICE[key] ? [VOICE[key]]
-      : chars.length && chars.every(charFile) ? chars.map(charFile)
+      : opts.spell !== false && chars.length && chars.every(charFile) ? chars.map(charFile)
       : null;
     if (files) {
       queue = files;

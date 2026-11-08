@@ -323,7 +323,9 @@
         item('➕', 'たしざん', '5まで', '#6bcb77', { op: '+', max: 5 }),
         item('➕', 'たしざん', '10まで', '#4d96ff', { op: '+', max: 10 }),
         item('➖', 'ひきざん', '5まで', '#ff8c42', { op: '-', max: 5 }),
-        item('➖', 'ひきざん', '10まで', '#ff6b6b', { op: '-', max: 10 })));
+        item('➖', 'ひきざん', '10まで', '#ff6b6b', { op: '-', max: 10 }),
+        item('➕', 'たしざん', 'くりあがり', '#9775fa', { op: '+', max: 20 }),
+        item('➖', 'ひきざん', 'くりさがり', '#f06595', { op: '-', max: 20 })));
   };
 
   // え（10マスに ならべた もの）を みて こたえの かずを おす。えを タップすると かぞえて くれる。
@@ -337,12 +339,16 @@
     const stars = h('div');
     const eq = h('div', { class: 'math-eq' });
     const pad = h('div', { class: 'num-pad' });
-    const speak = () => say(K.mathSay(a, op, b), { rate: 0.75 });
+    // 20までは 10を こえる もんだい（くりあがり・くりさがり）
+    const carry = max > 10;
+    const padMax = carry ? (op === '+' ? 18 : 10) : max;
+    const speak = () => say(K.mathSay(a, op, b), { rate: 0.75, spell: false });
 
     // 5こずつ ならべた かたまり。gone の ぶんは ひきざんで へる もの。
     function group(n, thing, gone = 0) {
-      return h('div', { class: 'math-group' + (n > 5 ? ' ten' : '') },
-        ...Array.from({ length: n > 5 ? 10 : 5 }, (_, i) => {
+      const ten = n > 5 || carry;
+      return h('div', { class: 'math-group' + (ten ? ' ten' : '') },
+        ...Array.from({ length: ten ? 10 : 5 }, (_, i) => {
           if (i >= n) return h('span', { class: 'math-cell empty' });
           const cell = h('button', {
             class: 'math-cell' + (i >= n - gone ? ' gone' : ''),
@@ -350,7 +356,7 @@
               if (cell.classList.contains('gone') || cell.dataset.n) return;
               counted++;
               cell.dataset.n = counted;
-              say(K.YOMI[counted], { rate: 0.9 });
+              say(K.YOMI[counted], { rate: 0.9, spell: false });
             },
           }, thing);
           return cell;
@@ -363,7 +369,9 @@
       counted = 0;
       let key;
       do {
-        if (op === '+') { a = 1 + Math.floor(Math.random() * (max - 1)); b = 1 + Math.floor(Math.random() * (max - a)); answer = a + b; }
+        if (carry && op === '+') { a = 2 + Math.floor(Math.random() * 8); b = 11 - a + Math.floor(Math.random() * (a - 1)); answer = a + b; }
+        else if (carry) { a = 11 + Math.floor(Math.random() * 8); b = a - 9 + Math.floor(Math.random() * (18 - a + 1)); answer = a - b; }
+        else if (op === '+') { a = 1 + Math.floor(Math.random() * (max - 1)); b = 1 + Math.floor(Math.random() * (max - a)); answer = a + b; }
         else { a = 2 + Math.floor(Math.random() * (max - 1)); b = 1 + Math.floor(Math.random() * (a - 1)); answer = a - b; }
         key = `${a}${op}${b}`;
       } while (key === last);
@@ -374,6 +382,8 @@
         h('div', { class: 'math-pics' },
           ...(op === '+'
             ? [group(a, thing), h('span', { class: 'math-op' }, '+'), group(b, thing)]
+            // 10を こえる ひきざんは 10の かたまりから とる（13−9 → 10−9=1、1+3=4）
+            : a > 10 ? [group(10, thing, b), group(a - 10, thing)]
             : [group(a, thing, b)])),
         h('div', { class: 'math-line' },
           h('span', {}, a), h('span', { class: 'math-op' }, op === '+' ? '+' : '−'), h('span', {}, b),
@@ -381,7 +391,7 @@
       // ひきざんは すこし まってから へる ぶんを けす
       if (op === '-') setTimeout(() => eq.querySelectorAll('.math-cell.gone').forEach(c => c.classList.add('out')), 700);
 
-      pad.replaceChildren(...Array.from({ length: max + 1 }, (_, n) => {
+      pad.replaceChildren(...Array.from({ length: padMax + 1 }, (_, n) => {
         const btn = h('button', {
           class: 'num-key',
           onclick: async () => {
@@ -396,7 +406,7 @@
               score++;
               stars.replaceChildren(starRow(score));
               await new Promise(r => setTimeout(r, 400));
-              say(K.mathSay(a, op, b, answer), { rate: 0.8 });
+              say(K.mathSay(a, op, b, answer), { rate: 0.8, spell: false });
               await new Promise(r => setTimeout(r, 2200));
               if (score >= 10) { await celebrate('かずの めいじん！', 2200); score = 0; }
               next();

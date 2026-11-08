@@ -37,6 +37,9 @@ const math = (a, op, b, ans) => {
 };
 for (let a = 1; a <= 9; a++) for (let b = 1; a + b <= 10; b++) math(a, '+', b, a + b);
 for (let a = 2; a <= 10; a++) for (let b = 1; b < a; b++) math(a, '-', b, a - b);
+// くりあがりの たしざん・くりさがりの ひきざん（20まで）
+for (let a = 2; a <= 9; a++) for (let b = 11 - a; b <= 9; b++) math(a, '+', b, a + b);
+for (let a = 11; a <= 18; a++) for (let b = a - 9; b <= 9; b++) math(a, '-', b, a - b);
 K.PRAISE.forEach(p => add(p));
 
 async function api(path, init) {

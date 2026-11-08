@@ -1,5 +1,5 @@
 // オフラインでも うごくように ファイルを とっておく
-const CACHE = 'aiueo-v6';
+const CACHE = 'aiueo-v7';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/strokes.js', 'js/kana.js', 'js/speech.js', 'js/write.js', 'js/app.js',
@@ -11,7 +11,7 @@ importScripts('voice/index.js');
 const VOICE_FILES = Object.values(self.VOICE || {}).map(f => 'voice/' + f);
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll([...FILES, ...VOICE_FILES])).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll([...FILES, ...VOICE_FILES].map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
@@ -19,10 +19,12 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 // さきに ネットを みて、つながらなければ とっておいた ものを つかう（フォントも ここで とっておく）
+// GitHub Pages は 10ぷん キャッシュさせるので、ブラウザの キャッシュを つかわず いつも あたらしいか たしかめる
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const sameOrigin = new URL(e.request.url).origin === location.origin;
   e.respondWith(
-    fetch(e.request).then(res => {
+    fetch(e.request, sameOrigin ? { cache: 'no-cache' } : undefined).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy));
       return res;

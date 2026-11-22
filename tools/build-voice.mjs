@@ -49,8 +49,17 @@ async function api(path, init) {
 }
 
 // こえの おおきさを そろえる（1もじは ことばより ちいさく なりがち）。
-// こえの しんの RMS を TARGET_RMS に。とびぬけた 0.1% の とがりは むしして 0.95 を うえかぎりに する。
-const TARGET_RMS = 0.2;
+// こえの しんの RMS を TARGET_RMS に。おおきく しすぎると おとが われるので ひかえめに して、
+// とがった ところは かたく きらずに まるく おさえる（KNEE から うえを LIMIT まで なめらかに）。
+// MP3 に すると なみが すこし はみだすので LIMIT は 1.0 より だいぶ したに。
+const TARGET_RMS = 0.13;
+const KNEE = 0.5;
+const LIMIT = 0.7;
+const soft = x => {
+  const a = Math.abs(x);
+  if (a <= KNEE) return x;
+  return Math.sign(x) * (KNEE + (LIMIT - KNEE) * Math.tanh((a - KNEE) / (LIMIT - KNEE)));
+};
 function normalize(pcm) {
   const abs = Array.from(pcm, v => Math.abs(v) / 32768);
   const p999 = [...abs].sort((a, b) => a - b)[Math.floor(abs.length * 0.999)];
@@ -58,8 +67,8 @@ function normalize(pcm) {
   const voiced = abs.filter(x => x > p999 * 0.1);
   if (!voiced.length || !p999) return pcm;
   const rms = Math.sqrt(voiced.reduce((s, x) => s + x * x, 0) / voiced.length);
-  const gain = Math.min(TARGET_RMS / rms, 0.95 / p999);
-  return pcm.map(v => Math.max(-32768, Math.min(32767, Math.round(v * gain))));
+  const gain = TARGET_RMS / rms;
+  return pcm.map(v => Math.round(soft(v / 32768 * gain) * 32767));
 }
 
 function wavToMp3(buf) {
@@ -89,7 +98,7 @@ const index = {};
 const readings = [];
 let made = 0;
 for (const [key, { src, level }] of phrases) {
-  const file = createHash('sha1').update(JSON.stringify([key, src, SPEAKER, PARAMS, level, TARGET_RMS, 'p999'])).digest('hex').slice(0, 10) + '.mp3';
+  const file = createHash('sha1').update(JSON.stringify([key, src, SPEAKER, PARAMS, level, TARGET_RMS, KNEE, LIMIT])).digest('hex').slice(0, 10) + '.mp3';
   index[key] = file;
   const q = await (await api(`/audio_query?speaker=${SPEAKER}&text=${encodeURIComponent(src)}`, { method: 'POST' })).json();
   readings.push(`${key}	${q.kana}`);
